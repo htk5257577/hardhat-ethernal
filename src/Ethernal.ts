@@ -1,9 +1,9 @@
+import {Block, TransactionReceipt, TransactionResponse} from "ethers";
+import { CallMessageTrace, CreateMessageTrace, isCallTrace, isCreateTrace, isEvmStep, isPrecompileTrace, MessageTraceStep } from "hardhat/internal/hardhat-network/stack-traces/message-trace";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
-import { ContractInput, EthernalContract, EthernalConfig } from './types';
-import { BlockWithTransactions, TransactionResponse, TransactionReceipt } from '@ethersproject/abstract-provider';
-import { MessageTraceStep, isCreateTrace, isCallTrace, CreateMessageTrace, CallMessageTrace, isEvmStep, isPrecompileTrace } from "hardhat/internal/hardhat-network/stack-traces/message-trace";
 
 import { Api } from './api';
+import { ContractInput, EthernalContract } from './types';
 const ETHERNAL_API_ROOT = process.env.ETHERNAL_API_ROOT || 'https://api.tryethernal.com';
 const ETHERNAL_WEBAPP_ROOT = process.env.ETHERNAL_WEBAPP_ROOT || 'https://app.tryethernal.com';
 
@@ -11,14 +11,14 @@ const logger = (message: any) => {
     console.log(`[Ethernal] `, message);
 }
 
-const handleError = (baseMessage: string, error: any, verbose: Boolean) => {
+const handleError = (baseMessage: string, error: any, verbose: boolean) => {
     try {
         const errorMessage = error.response?.data || error?.message || `Can't find an error message. Try in verbose mode.`;
         logger(`${baseMessage}: ${errorMessage}`);
-        if (verbose) console.log(error);
+        if (verbose) { console.log(error); }
     } catch(_error: any) {
         logger(_error.message);
-        if (verbose) console.log(_error);
+        if (verbose) { console.log(_error); }
     }
 }
 
@@ -26,10 +26,10 @@ export class Ethernal {
     public env: HardhatRuntimeEnvironment;
     private targetContract!: ContractInput;
     private db: any;
-    private syncNextBlock: Boolean;
+    private syncNextBlock: boolean;
     private api: any;
     private traces: any[];
-    private verbose: Boolean;
+    private verbose: boolean;
 
     constructor(hre: HardhatRuntimeEnvironment) {
         this.env = hre;
@@ -49,8 +49,9 @@ export class Ethernal {
         const envSet = await this.setLocalEnvironment();
         if (!envSet) { return; }
 
-        if (this.env.config.ethernal.resetOnStart)
+        if (this.env.config.ethernal.resetOnStart) {
             await this.resetWorkspace(this.env.config.ethernal.resetOnStart);
+        }
 
         this.env.ethers.provider.on('block', (blockNumber: number, error: any) => {
             if (!!this.env.config.ethernal.skipFirstBlock && !this.syncNextBlock){
@@ -105,27 +106,28 @@ export class Ethernal {
         logger(`Updated artifacts for contract ${contract.name} (${contract.address}).${dependenciesString}`);
     }
 
-    public async traceHandler(trace: MessageTraceStep, isMessageTraceFromACall: Boolean) {
-        if (this.env.config.ethernal.disabled) return;
-        if (this.env.config.ethernal.disableTrace) return;
-        if (isMessageTraceFromACall) return;
+    public async traceHandler(trace: MessageTraceStep, isMessageTraceFromACall: boolean) {
+        if (this.env.config.ethernal.disabled) { return; }
+        if (this.env.config.ethernal.disableTrace) { return; }
+        if (isMessageTraceFromACall) { return; }
 
         await this.setLocalEnvironment();
         const envSet = await this.setLocalEnvironment();
-        if (!envSet) return;
+        if (!envSet) { return; }
 
         const parsedTrace: any = [];
 
-        let stepper = async (step: MessageTraceStep) => {
-            if (isEvmStep(step) || isPrecompileTrace(step))
+        const stepper = async (step: MessageTraceStep) => {
+            if (isEvmStep(step) || isPrecompileTrace(step)) {
                 return;
+            }
             if (isCreateTrace(step) && step.deployedContract) {
                 const address = `0x${step.deployedContract.toString('hex')}`;
                 const bytecode = await this.env.ethers.provider.getCode(address);
                 parsedTrace.push({
                     op: 'CREATE2',
-                    contractHashedBytecode: this.env.ethers.utils.keccak256(bytecode),
-                    address: address,
+                    contractHashedBytecode: this.env.ethers.keccak256(bytecode),
+                    address,
                     depth: step.depth
                 });
             }
@@ -134,15 +136,16 @@ export class Ethernal {
                 const bytecode = await this.env.ethers.provider.getCode(address);
                 parsedTrace.push({
                     op: 'CALL',
-                    contractHashedBytecode: this.env.ethers.utils.keccak256(bytecode),
-                    address: address,
+                    contractHashedBytecode: this.env.ethers.keccak256(bytecode),
+                    address,
                     input: step.calldata.toString('hex'),
                     depth: step.depth,
                     returnData: step.returnData.toString('hex')
                 });
             }
 
-            for (var i = 0; i < step.steps.length; i++) {
+            // tslint:disable-next-line:prefer-for-of
+            for (let i = 0; i < step.steps.length; i++) {
                 await stepper(step.steps[i]);
             }
         };
@@ -185,8 +188,10 @@ export class Ethernal {
         }
         else {
             try {
-                const block = await this.env.ethers.provider.getBlockWithTransactions(blockNumber);
-                await this.syncBlock(block);
+                const block = await this.env.ethers.provider.getBlock(blockNumber ,true);
+                if (block){
+                    await this.syncBlock(block);
+                }
             } catch(error: any) {
                 handleError(`Couldn't sync block #${blockNumber}`, error, this.verbose);
             }
@@ -203,27 +208,30 @@ export class Ethernal {
     }
 
     private async setLocalEnvironment() {
-        if (this.api.isLoggedIn && this.api.hasWorkspace)
+        if (this.api.isLoggedIn && this.api.hasWorkspace) {
             return true;
+        }
 
         if (!this.api.isLoggedIn) {
             const isLoggedIn = await this.login();
-            if (!isLoggedIn)
+            if (!isLoggedIn) {
                 return false;
+            }
         }
 
         const isWorkspaceSet = await this.setWorkspace();
-        if (!isWorkspaceSet)
+        if (!isWorkspaceSet) {
             return false;
+        }
 
         return true;
     }
 
     private onPending() {
-        //TODO: to implement
+        // TODO: to implement
     }
 
-    private async syncBlock(block: BlockWithTransactions) {
+    private async syncBlock(block: Block) {
         if (block) {
             const trace = this.traces.shift();
             try {
@@ -232,15 +240,17 @@ export class Ethernal {
             }  catch(error: any) {
                 handleError(`Couldn't sync block #${block.number}`, error, this.verbose);
             }
-            for (let i = 0; i < block.transactions.length; i++) {
-                const transaction = block.transactions[i];
+            for (let i = 0; i < block.prefetchedTransactions.length; i++) {
+                const transaction = block.prefetchedTransactions[i];
                 try {
                     const receipt = await this.env.ethers.provider.getTransactionReceipt(transaction.hash);
-                    if (!receipt)
+                    if (!receipt) {
                         logger(`Couldn't get receipt for transaction ${transaction.hash}`);
-                    else
+                    }
+                    else {
                         // We can't match a trace to a transaction, so we assume blocks with 1 transaction, and sync the trace only for the first one
-                        await this.syncTransaction(block, transaction, receipt, i == 0 ? trace : null);
+                        await this.syncTransaction(block, transaction, receipt, i === 0 ? trace : null);
+                    }
                 } catch(error: any) {
                     handleError(`Couldn't sync transaction ${transaction.hash}`, error, this.verbose);
                 }
@@ -249,9 +259,9 @@ export class Ethernal {
     }
 
     private stringifyBns(obj: any) {
-        var res: any = {}
+        const res: any = {}
         for (const key in obj) {
-            if (this.env.ethers.BigNumber.isBigNumber(obj[key])) {
+            if (typeof obj[key] === 'bigint') {
                 res[key] = obj[key].toString();
             }
             else {
@@ -261,7 +271,7 @@ export class Ethernal {
         return res;
     }
 
-    private async syncTransaction(block: BlockWithTransactions, transaction: TransactionResponse, transactionReceipt: TransactionReceipt, trace: any[] | null) {
+    private async syncTransaction(block: Block, transaction: TransactionResponse, transactionReceipt: TransactionReceipt, trace: any[] | null) {
         try {
             await this.api.syncTransaction(block, transaction, transactionReceipt);
             logger(`Synced transaction ${transaction.hash}`);
@@ -297,7 +307,8 @@ export class Ethernal {
                 logger(`Authenticated with API token.`)
             }
             else {
-                let email, password;
+                let email;
+                let password;
 
                 email = this.env.config.ethernal.email;
 
@@ -308,7 +319,7 @@ export class Ethernal {
                     password = this.env.config.ethernal.password;
                     if (!password) {
                         return logger(`Missing password to authenticate. Make sure you've either set ETHERNAL_PASSWORD in your environment or they key 'password' in your Ethernal config object & restart the node.`);
-                    }    
+                    }
                 }
 
                 await this.api.login(email, password);
@@ -325,13 +336,13 @@ export class Ethernal {
 
     private async getFormattedArtifact(targetContract: ContractInput) {
         const fullyQualifiedNames = await this.env.artifacts.getAllFullyQualifiedNames();
-        var defaultBuildInfo = {
+        const defaultBuildInfo = {
             output: {
                 contracts: {},
                 sources: {}
             }
         };
-        let res:EthernalContract = {
+        const res:EthernalContract = {
             name: '',
             address: '',
             abi: {},
@@ -339,23 +350,26 @@ export class Ethernal {
             dependencies: {}
         }
 
-        for (var i = 0; i < fullyQualifiedNames.length; i++) {
-            var buildInfo = await this.env.artifacts.getBuildInfo(fullyQualifiedNames[i]);
+        // tslint:disable-next-line:prefer-for-of
+        for (let i = 0; i < fullyQualifiedNames.length; i++) {
+            const buildInfo = await this.env.artifacts.getBuildInfo(fullyQualifiedNames[i]);
             if (!buildInfo) {
                 continue;
             }
-            var buildInfoContracts = buildInfo.output.contracts;
-            var buildInfoOutputSources = buildInfo.output.sources;
-            var buildInfoInputSources = buildInfo.input.sources;
-            for (var contractFile in buildInfoContracts) {
-                for (var contractName in buildInfoContracts[contractFile]) {
-                    var artifact = JSON.stringify({
-                        contractName: contractName,
+            const buildInfoContracts = buildInfo.output.contracts;
+            const buildInfoOutputSources = buildInfo.output.sources;
+            const buildInfoInputSources = buildInfo.input.sources;
+            // tslint:disable-next-line:forin
+            for (const contractFile in buildInfoContracts) {
+                // tslint:disable-next-line:forin
+                for (const contractName in buildInfoContracts[contractFile]) {
+                    const artifact = JSON.stringify({
+                        contractName,
                         abi: buildInfoContracts[contractFile][contractName].abi,
                         ast: buildInfoOutputSources[contractFile].ast,
                         source: buildInfoInputSources[contractFile].content
                     });
-                    if (contractName == targetContract.name) {
+                    if (contractName === targetContract.name) {
                         res.abi = buildInfoContracts[contractFile][contractName].abi;
                         res.name = contractName;
                         res.artifact = artifact;
@@ -370,8 +384,8 @@ export class Ethernal {
         return res;
     }
 
-    private sanitize(obj: TransactionResponse | TransactionReceipt | BlockWithTransactions) {
-        var res: any = {};
+    private sanitize(obj: TransactionResponse | TransactionReceipt | Block) {
+        let res: any = {};
         res = Object.fromEntries(
             Object.entries(obj)
                 .filter(([_, v]) => v != null)

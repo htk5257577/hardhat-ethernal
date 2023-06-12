@@ -15,5 +15,5 @@ const DEV_CONFIG = {
 };
 
 module.exports = {
-    FIREBASE_CONFIG: process.env.NODE_ENV == 'development' ? DEV_CONFIG : PROD_CONFIG
+    FIREBASE_CONFIG: process.env.NODE_ENV === 'development' ? DEV_CONFIG : PROD_CONFIG
 };

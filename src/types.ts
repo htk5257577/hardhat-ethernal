@@ -1,4 +1,3 @@
-import { BlockWithTransactions } from '@ethersproject/abstract-provider';
 
 export interface EthernalConfig {
     disableSync: boolean;

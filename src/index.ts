@@ -1,11 +1,10 @@
-import '@nomiclabs/hardhat-ethers';
-import { extendEnvironment, subtask, experimentalAddHardhatNetworkMessageTraceHook, extendConfig } from "hardhat/config";
-import { HardhatConfig, HardhatUserConfig } from "hardhat/types";
-import { lazyObject } from "hardhat/plugins";
+import "@nomicfoundation/hardhat-ethers";
 import { TASK_NODE_SERVER_READY } from "hardhat/builtin-tasks/task-names";
+import { experimentalAddHardhatNetworkMessageTraceHook, extendConfig, extendEnvironment, subtask } from "hardhat/config";
+import { lazyObject } from "hardhat/plugins";
+import { HardhatConfig, HardhatUserConfig } from "hardhat/types";
 
 import { Ethernal } from "./Ethernal";
-
 import "./type-extensions";
 
 subtask(TASK_NODE_SERVER_READY).setAction(async (args, hre, runSuper) => {
@@ -14,15 +13,17 @@ subtask(TASK_NODE_SERVER_READY).setAction(async (args, hre, runSuper) => {
         if (!ethernalConfig.disableSync) {
             hre.ethernal.startListening();
         }
-        else
+        else {
             console.log('[Ethernal] Not syncing')
+        }
     }
     await runSuper(args);
 });
 
 experimentalAddHardhatNetworkMessageTraceHook(async (hre, trace, isMessageTraceFromACall) => {
-    if (!hre.config.ethernal.disabled && !isMessageTraceFromACall)
+    if (!hre.config.ethernal.disabled && !isMessageTraceFromACall) {
         hre.ethernal.traceHandler(trace, isMessageTraceFromACall);
+    }
 });
 
 extendConfig(
